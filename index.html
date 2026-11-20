@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>3-Microphone TDOA Position & Tracking Simulator</title>
+<style>
+  :root{--ink:#203248;--muted:#617286;--line:#d9e4ed;--primary:#176995;--dark:#103c5b;--aqua:#12a7ab;--amber:#df923c;--bg:#f4f8fb;--white:#fff;--soft:#e9f4f9}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 system-ui,-apple-system,"Segoe UI",Arial,sans-serif}
+  .wrap{max-width:1340px;margin:auto;padding:27px 24px 45px}
+  header{display:flex;gap:16px;justify-content:space-between;align-items:flex-start;margin-bottom:22px}
+  .eyebrow{font-weight:800;text-transform:uppercase;color:var(--primary);font-size:11px;letter-spacing:.12em;margin-bottom:6px}
+  h1{font-size:clamp(25px,3vw,36px);letter-spacing:-1.2px;line-height:1.15;margin:0 0 10px}
+  h2{font-size:18px;letter-spacing:-.3px;margin:0 0 4px}
+  h3{font-size:14px;margin:15px 0 7px}
+  p{margin:0;color:var(--muted)}
+  .subtitle{max-width:750px}
+  .chip{background:#e5f1f8;color:#1e678b;padding:8px 12px;border-radius:99px;font-size:12px;font-weight:800;white-space:nowrap}
+  .layout{display:grid;grid-template-columns:minmax(335px,430px) minmax(0,1fr);gap:18px;align-items:start}
+  .stack{display:grid;gap:16px}
+  .card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:19px;box-shadow:0 3px 15px rgba(29,66,93,.035)}
+  .intro{margin-bottom:15px}
+  .hint{font-size:12px;color:var(--muted);margin:7px 0 0}
+  .sectionlabel{font-weight:800;text-transform:uppercase;letter-spacing:.09em;color:var(--primary);font-size:11px;margin-bottom:5px}
+  .field{display:grid;gap:5px;min-width:0}
+  label{font-size:12px;font-weight:750;color:#40576d}
+  input,select{font:inherit;min-width:0;width:100%;height:39px;border:1px solid #c9d9e4;border-radius:8px;padding:7px 9px;background:#fff;color:var(--ink)}
+  input:focus,select:focus{outline:2px solid rgba(19,119,171,.3);border-color:#3a9ccd}
+  input[type=number]{font-variant-numeric:tabular-nums}
+  .grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}
+  .grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+  .readings{width:100%;border-collapse:separate;border-spacing:0 7px;margin-top:7px}
+  .readings th{text-align:left;color:var(--muted);font-weight:750;font-size:11px;padding:0 4px}
+  .readings td{padding:0 3px}
+  .readings input{height:37px;padding:5px 7px;font-size:13px}
+  .miclabel{display:inline-flex;align-items:center;gap:5px;font-weight:800;white-space:nowrap;font-size:12px}
+  .dot{width:8px;height:8px;background:#1c7cae;border-radius:50%;display:inline-block}
+  button{font:inherit;cursor:pointer;border-radius:9px;border:1px solid #bdd3e2;padding:9px 12px;font-weight:800;font-size:13px;background:#fff;color:#286181;transition:background .13s,border-color .13s}
+  button:hover{background:#eef6fa;border-color:#93bed5}
+  button:focus-visible{outline:3px solid #a2dcf2;outline-offset:2px}
+  button.primary{background:#176995;color:#fff;border-color:#176995}
+  button.primary:hover{background:#11547a}
+  button.ghost{background:transparent}
+  button.small{padding:7px 10px;font-size:12px}
+  button:disabled{opacity:.45;cursor:default}
+  .buttons{display:flex;flex-wrap:wrap;gap:8px;margin-top:15px}
+  .btnrow{display:flex;flex-wrap:wrap;gap:8px;margin-top:9px}
+  .divider{border:0;border-top:1px solid var(--line);margin:17px 0}
+  .status{font-size:12px;color:var(--muted);margin-top:9px;min-height:18px}
+  .status.error{color:#ae412c;font-weight:700}
+  .status.warn{color:#94611c}
+  .resultrow{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+  .coords{font-size:clamp(24px,3vw,36px);line-height:1.25;font-weight:850;letter-spacing:-1px;color:var(--dark);margin:9px 0 2px;font-variant-numeric:tabular-nums}
+  .resultsoft{font-size:12px;color:var(--muted)}
+  .metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:14px}
+  .metric{padding:11px 10px;background:#f0f6fa;border-radius:10px;min-width:0}
+  .metric .mval{font-size:19px;font-weight:800;color:#244f71;font-variant-numeric:tabular-nums;white-space:nowrap}
+  .metric .mtitle{font-size:11px;color:#587086;margin-top:2px}
+  .callout{padding:10px 12px;background:#fff9ef;border:1px solid #f0dcb6;border-radius:9px;color:#795322;font-size:12px;margin-top:13px;line-height:1.5}
+  .callout strong{font-weight:850}
+  .plotwrap{border:1px solid #deebf2;border-radius:12px;background:#fbfdfe;overflow:hidden;margin-top:13px}
+  canvas{display:block;width:100%;height:auto;aspect-ratio:1.48;max-height:500px}
+  .legend{display:flex;gap:17px;flex-wrap:wrap;font-size:12px;color:#617386;margin:11px 0 0}
+  .legend span{display:flex;gap:6px;align-items:center}
+  .legend i{display:inline-block;width:17px;height:3px;border-radius:4px}
+  .legend .circle{height:9px;width:9px;border-radius:50%}
+  .dataout{width:100%;border-collapse:collapse;font-size:12px;margin-top:8px}
+  .dataout th{text-align:right;color:#667b8a;font-size:11px;font-weight:750;border-bottom:1px solid var(--line);padding:9px 5px}
+  .dataout th:first-child,.dataout td:first-child{text-align:left}
+  .dataout td{text-align:right;padding:8px 5px;border-bottom:1px solid #edf1f5;font-variant-numeric:tabular-nums}
+  .dataout tr:last-child td{border-bottom:0}
+  .bottom{margin-top:19px;display:grid;grid-template-columns:1fr 1fr;gap:17px}
+  .bottom p{font-size:13px}
+  .math{font-family:Cambria,Georgia,serif;color:#245471;font-size:16px;display:block;margin:8px 0}
+  textarea{width:100%;min-height:120px;resize:vertical;border:1px solid #c9d9e4;border-radius:9px;padding:10px;font:12px/1.55 ui-monospace,SFMono-Regular,Consolas,monospace;color:var(--ink);background:white;tab-size:2}
+  textarea:focus{outline:2px solid rgba(19,119,171,.3)}
+  input[type=range]{padding:0;border:0;accent-color:var(--primary);height:24px}
+  input[type=file]{height:auto;padding:7px;font-size:12px}
+  .tracktools{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+  .trackstatus{min-height:32px;padding-top:9px;font-size:12px;color:#365e79}
+  .framebar{display:flex;justify-content:space-between;align-items:center;gap:6px;margin-top:11px;font-size:12px}
+  .tag{display:inline-flex;align-items:center;border-radius:5px;padding:2px 7px;background:#edf5fa;color:#28668c;font-size:11px;font-weight:700}
+  .smallnote{font-size:12px;color:var(--muted)}
+  .foot{font-size:11px;margin-top:18px;text-align:center;color:#7d8e9d}
+  .sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+  @media(max-width:970px){.layout{grid-template-columns:1fr}.wrap{max-width:780px}}
+  @media(max-width:550px){.wrap{padding:18px 12px 30px}.card{padding:14px}.chip{display:none}.metrics{grid-template-columns:1fr 1fr}.grid3{gap:4px}.readings th{font-size:10px}.readings input{padding:5px 4px} canvas{aspect-ratio:1.04}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+<div>
+<div class="eyebrow">Interactive mathematics lab · acoustic positioning</div>
+<h1>3-Microphone TDOA Tracking Simulator</h1>
+<p class="subtitle">Use exactly three synchronized microphones. Enter one set of timestamps or many successive sound events to estimate positions and plot the source trajectory—entirely in your browser.</p>
+</div><div class="chip">No installation · Works offline</div>
+</header>
+<div class="layout">
+<section class="stack" aria-label="Simulation inputs">
+<div class="card">
+<div class="sectionlabel">Step 1</div><h2>Enter microphone measurements</h2>
+<p class="hint">Enter the coordinates and arrival timestamps for exactly three microphones (M1, M2, M3). All timestamps must use the same synchronized clock.</p>
+<div class="grid2" style="margin-top:14px">
+  <div class="field"><label for="time-unit">Timestamp unit</label><select id="time-unit"><option value="ms">Milliseconds (ms)</option><option value="us">Microseconds (µs)</option></select></div>
+  <div class="field"><label for="speed">Speed of sound (m/s)</label><input id="speed" type="number" step="any" min="0.000001" value="343"></div>
+</div>
+<table class="readings" id="sensors" aria-label="Microphone coordinates and arrival times">
+<thead><tr><th>Mic</th><th>x (m)</th><th>y (m)</th><th>Arrival time</th></tr></thead>
+<tbody id="sensor-body"></tbody>
+</table>
+<div class="btnrow"><button id="example" class="small ghost" type="button">Restore 3-mic example</button></div>
+</div>
+<div class="card">
+<div class="sectionlabel">Step 2</div><h2>Choose search region</h2>
+<p class="hint">The solver searches for the source inside this rectangle. Use a region that contains the possible source locations.</p>
+<div class="grid2" style="margin-top:11px">
+  <div class="field"><label for="min-x">Min x (m)</label><input type="number" step="any" id="min-x" value="-1"></div>
+  <div class="field"><label for="max-x">Max x (m)</label><input type="number" step="any" id="max-x" value="5"></div>
+  <div class="field"><label for="min-y">Min y (m)</label><input type="number" step="any" id="min-y" value="-1"></div>
+  <div class="field"><label for="max-y">Max y (m)</label><input type="number" step="any" id="max-y" value="5"></div>
+</div>
+<div class="buttons"><button type="button" id="estimate" class="primary">Estimate source position</button></div>
+<div class="status" role="status" id="status"></div>
+</div>
+<div class="card">
+<div class="sectionlabel">Optional test mode</div><h2>Generate simulated timestamps</h2>
+<p class="hint">Choose a known source location. The app calculates theoretical arrival timestamps so you can check whether the solver recovers it. You can edit the generated timestamps afterward.</p>
+<div class="grid3" style="margin-top:12px">
+  <div class="field"><label for="true-x">True x (m)</label><input id="true-x" type="number" step="any" value="1"></div>
+  <div class="field"><label for="true-y">True y (m)</label><input id="true-y" type="number" step="any" value="1"></div>
+  <div class="field"><label for="emit-time">Emission time (ms)</label><input id="emit-time" type="number" step="any" value="100"></div>
+</div>
+<div class="grid2" style="margin-top:9px">
+  <div class="field"><label for="noise">Noise SD (µs)</label><input type="number" id="noise" min="0" step="any" value="0"></div>
+  <div class="field" style="justify-content:end"><button id="generate" type="button">Generate test readings</button></div>
+</div>
+</div>
+
+<div class="card" id="tracking-card">
+<div class="sectionlabel">Moving-source mode</div><h2>Track an object over time</h2>
+<p class="hint">Each row is <b>one sound event</b> with exactly three arrival timestamps (M1, M2, M3) for the <b>same pulse</b>. The first column is an event/frame label; it does not need to be the emission time.</p>
+<div class="field" style="margin-top:12px">
+  <label for="sequence">Timestamp sequence (CSV, one event per row)</label>
+  <textarea id="sequence" spellcheck="false" placeholder="frame,M1,M2,M3
+0,104.123,109.219,109.219
+1,304.123,309.219,309.219"></textarea>
+</div>
+<div class="btnrow">
+  <button type="button" class="small" id="make-motion-demo">Generate moving example</button>
+  <button type="button" class="small" id="load-sequence">Load CSV sequence</button>
+</div>
+<div class="field" style="margin-top:12px"><label for="csv-upload">Or import a .csv / .txt file</label><input type="file" accept=".csv,.txt,text/csv,text/plain" id="csv-upload"></div>
+<div class="divider"></div>
+<div class="grid2">
+  <div class="field"><label for="fps">Playback speed (frames/sec)</label><input type="number" id="fps" min="0.5" max="30" step="0.5" value="5"></div>
+  <div class="field"><label for="track-count">Processed events</label><div id="track-count" class="tag" style="margin-top:10px">0 / 0</div></div>
+</div>
+<div class="buttons">
+  <button id="play-track" type="button" class="primary" disabled>▶ Play / Pause</button>
+  <button id="process-track" type="button" disabled>Calculate whole track</button>
+  <button id="append-track" type="button">+ Append current timestamps</button>
+  <button id="clear-track" class="ghost" type="button">Clear track</button>
+</div>
+<div class="framebar"><label for="frame-slider">Current event</label><strong id="frame-label">—</strong></div>
+<input id="frame-slider" type="range" min="0" max="0" value="0" step="1" disabled aria-label="Select event in trajectory">
+<div class="trackstatus" id="track-status" role="status">Load a CSV sequence or generate an example to begin tracking.</div>
+<p class="hint">With manual entry, click “Append current timestamps” after each new sound event. Playback steps through recorded events; it does not read hardware automatically.</p>
+</div>
+</section>
+<section class="stack" aria-label="Estimate and visual output">
+<div class="card">
+<div class="resultrow"><div><div class="sectionlabel">Step 3</div><h2>Estimated source location</h2></div><div class="chip" id="method-chip">Nonlinear least squares</div></div>
+<div id="result-panel">
+  <div id="coords" class="coords">—</div>
+  <div class="resultsoft" id="results-note">Enter measurements and select “Estimate source position.”</div>
+  <div class="metrics">
+    <div class="metric"><div id="fit-m" class="mval">—</div><div class="mtitle">Residual RMS (m)</div></div>
+    <div class="metric"><div id="fit-us" class="mval">—</div><div class="mtitle">Residual RMS (µs)</div></div>
+    <div class="metric"><div id="real-error" class="mval">—</div><div class="mtitle">True position error (m)*</div></div>
+  </div>
+</div>
+<div class="plotwrap"><canvas id="plot" width="960" height="625" role="img" aria-label="Coordinate plot showing microphone locations, time-difference hyperbolas, and estimated source"></canvas></div>
+<div class="legend"><span><i style="background:#207bab"></i> Mic 2−Mic 1 hyperbola</span><span><i style="background:#de9444"></i> Mic 3−Mic 1 hyperbola</span><span><i class="circle" style="background:#133f62"></i> Estimated source</span><span><i class="circle" style="background:#20a889"></i> Test-source position</span></div>
+<div id="warnings" class="callout" style="display:none"></div>
+</div>
+<div class="card">
+<h2>What was calculated?</h2>
+<p class="hint">Differences are relative to microphone 1. Signed values matter: a positive Δt means the microphone received the sound later than microphone 1.</p>
+<div style="overflow-x:auto"><table class="dataout"><thead><tr><th>Mic</th><th>Δt (µs)</th><th>v × Δt (m)</th><th>Est. distance (m)</th></tr></thead><tbody id="output-tbody"><tr><td colspan="4" style="text-align:left">No calculation yet.</td></tr></tbody></table></div>
+<p class="hint">*The true position error is known only in the optional simulated test mode. Residual RMS measures equation fit, not actual location accuracy.</p>
+</div>
+
+<div class="card" id="trajectory-output">
+<div class="sectionlabel">Moving-source visualization</div><h2>Estimated movement history</h2>
+<p class="hint">The spatial plot above shows the trajectory and current estimated position. The following chart plots each coordinate against the event number.</p>
+<div class="plotwrap"><canvas id="history-plot" width="960" height="450" role="img" aria-label="Timeline showing estimated source x and y coordinates versus event number"></canvas></div>
+<div class="legend"><span><i style="background:#286fc1"></i> x (m)</span><span><i style="background:#bc5a96"></i> y (m)</span><span><i class="circle" style="background:#193d59"></i> Current event</span></div>
+<p id="trajectory-summary" class="smallnote" style="margin-top:10px">No motion sequence loaded yet.</p>
+<div class="btnrow"><button type="button" id="export-track" disabled>Export estimated positions (.csv)</button></div>
+</div>
+</section>
+</div>
+<div class="bottom">
+<div class="card"><h2>Underlying mathematical model</h2><span class="math">dᵢ = √[(x−xᵢ)² + (y−yᵢ)²]</span><span class="math">dᵢ − d₁ = v(tᵢ − t₁)</span><p>The program searches for a point (x, y) where the predicted distance differences most closely match those calculated from the timestamps. Each distance-difference equation defines a hyperbola.</p></div>
+<div class="card"><h2>Important limitations</h2><p>Each event must represent <b>one identifiable sound pulse</b> heard by all microphones using a common clock. The source must be nearly stationary during that pulse’s travel to the microphones. A continuous undifferentiated sound cannot be localized from arbitrary timestamps alone; the arrivals of each common event must be matched. Three microphones provide the two time-difference equations required for 2D estimation, but may produce multiple possible positions or sensitivity to noise. Restrict the search area and place the microphones in a non-collinear triangle. Motion playback is sampled tracking, not an automatic real-time hardware connection.</p></div>
+</div>
+<div class="foot">Standalone educational simulator • Calculations run locally in your browser • Coordinates are in metres</div>
+</div>
+<script>
+'use strict';
+const $ = id => document.getElementById(id);
+const body = $('sensor-body');
+let nextMicId = 0, lastPlot = null, truth = null, curUnit = 'ms';
+let trackData = null, trackTimer = null, drawingTrack = false;
+const fmt = (n, dec=4) => Number.isFinite(n) ? n.toFixed(dec).replace(/\.?0+$/, m => m.startsWith('.')?'':m) : '—';
+const num = id => Number($(id).value);
+const sqr = a => a*a;
+const dist = (x,y,m) => Math.hypot(x-m.x, y-m.y);
+const clamp = (a,min,max) => Math.max(min,Math.min(max,a));
+function addRow(x=0,y=0,t=0){
+ const id=++nextMicId;
+ const tr=document.createElement('tr'); tr.dataset.mid=String(id);
+ tr.innerHTML=`<td><span class="miclabel"><i class="dot"></i><span class="mid"></span></span></td><td><input aria-label="Microphone x" class="sx" type="number" step="any" value="${x}"></td><td><input aria-label="Microphone y" class="sy" type="number" step="any" value="${y}"></td><td><input aria-label="Arrival timestamp" class="st" type="number" step="any" value="${t}"></td>`;
+ tr.querySelectorAll('input').forEach(el=>el.addEventListener('input',()=>{if(el.classList.contains('sx')||el.classList.contains('sy'))invalidateTrack();markStale(true);}));
+ body.appendChild(tr);renumber();
+}
+function renumber(){[...body.children].forEach((tr,i)=>{tr.querySelector('.mid').textContent='M'+(i+1);});}
+function markStale(wasManual=false){if(wasManual)truth=null;lastPlot=null;$('coords').textContent='—';$('results-note').textContent='Inputs changed. Click “Estimate source position” to recalculate.';$('fit-m').textContent='—';$('fit-us').textContent='—';$('real-error').textContent='—';$('warnings').style.display='none';$('output-tbody').innerHTML='<tr><td colspan="4" style="text-align:left">Recalculate to view results.</td></tr>';$('status').textContent='';draw();}
+function makeExample(){clearTrack(false);body.replaceChildren();nextMicId=0;$('time-unit').value='ms';curUnit='ms';$('speed').value='343';[['0','0','104.123'],['4','0','109.219'],['0','4','109.219']].forEach(row=>addRow(...row));['min-x','min-y'].forEach(id=>$(id).value='-1');['max-x','max-y'].forEach(id=>$(id).value='5');truth=null;solveAndRender();}
+function getData(){
+ const rows=[...body.children].map((tr,i)=>{const get=cls=>tr.querySelector(cls).value;return {i:i+1,x:Number(get('.sx')),y:Number(get('.sy')),t:Number(get('.st')),valid:get('.sx')!==''&&get('.sy')!==''&&get('.st')!==''};});
+ if(rows.length!==3||rows.some(r=>!r.valid||!Number.isFinite(r.x+r.y+r.t)))throw Error('Exactly three valid microphones (M1, M2, M3) are required.');
+ const v=num('speed');if(!Number.isFinite(v)||v<=0)throw Error('Speed of sound must be positive.');
+ const bounds={minX:num('min-x'),maxX:num('max-x'),minY:num('min-y'),maxY:num('max-y')};
+ if(['min-x','max-x','min-y','max-y'].some(id=>$(id).value==='')||Object.values(bounds).some(a=>!Number.isFinite(a))||bounds.minX>=bounds.maxX||bounds.minY>=bounds.maxY)throw Error('The maximum x/y limits must be greater than the minimum limits.');
+ const timeScale=$('time-unit').value==='ms'?0.001:0.000001;
+ const dd=rows.slice(1).map(s=>v*(s.t-rows[0].t)*timeScale);
+ return {rows,v,bounds,dd,timeScale};
+}
+function residuals(x,y,data){const d1=dist(x,y,data.rows[0]);return data.rows.slice(1).map((s,i)=>dist(x,y,s)-d1-data.dd[i]);}
+function score(x,y,data){let sum=0;for(const r of residuals(x,y,data))sum+=r*r;return sum;}
+function optimize(x,y,data){
+ const b=data.bounds; x=clamp(x,b.minX,b.maxX);y=clamp(y,b.minY,b.maxY);
+ let lambda=.1, s=score(x,y,data);
+ for(let iter=0;iter<95;iter++){
+   let hxx=0,hxy=0,hyy=0,gx=0,gy=0;
+   const p1=data.rows[0],d1=Math.max(dist(x,y,p1),1e-9);
+   for(let i=1;i<data.rows.length;i++){
+     const p=data.rows[i], di=Math.max(dist(x,y,p),1e-9);
+     const r=di-d1-data.dd[i-1];
+     const jx=(x-p.x)/di-(x-p1.x)/d1;
+     const jy=(y-p.y)/di-(y-p1.y)/d1;
+     hxx+=jx*jx;hxy+=jx*jy;hyy+=jy*jy;gx+=jx*r;gy+=jy*r;
+   }
+   const a=hxx+lambda,c=hyy+lambda,det=a*c-hxy*hxy;
+   if(det<=1e-24||!Number.isFinite(det))break;
+   const dx=(-c*gx+hxy*gy)/det,dy=(hxy*gx-a*gy)/det;
+   const nx=clamp(x+dx,b.minX,b.maxX),ny=clamp(y+dy,b.minY,b.maxY),ns=score(nx,ny,data);
+   if(ns<s-1e-22){const move=Math.hypot(nx-x,ny-y);x=nx;y=ny;s=ns;lambda=Math.max(lambda*.48,1e-12);if(move<1e-10)break;}
+   else{lambda=Math.min(lambda*5,1e12);if(lambda>=1e12)break;}
+ }
+ return {x,y,s,rms:Math.sqrt(s/(data.rows.length-1))};
+}
+function findSolutions(data){
+ const b=data.bounds,starts=[];
+ for(let j=0;j<9;j++)for(let i=0;i<9;i++)starts.push({x:b.minX+(b.maxX-b.minX)*i/8,y:b.minY+(b.maxY-b.minY)*j/8});
+ for(const p of data.rows)starts.push({x:p.x,y:p.y});
+ const all=starts.map(p=>optimize(p.x,p.y,data)).sort((a,b)=>a.s-b.s);
+ const distinct=[],span=Math.hypot(b.maxX-b.minX,b.maxY-b.minY);
+ for(const sol of all){if(!distinct.some(p=>Math.hypot(p.x-sol.x,p.y-sol.y)<Math.max(1e-4,span*0.001)))distinct.push(sol);}
+ const best=distinct[0];
+ const plausible=distinct.filter(p=>p.rms<=best.rms+Math.max(.002, .02*best.rms)).slice(0,6);
+ return {best,plausible};
+}
+function status(text,kind=''){const el=$('status');el.textContent=text;el.className='status '+kind;}
+function solveAndRender(){
+ try{
+   const data=getData();
+   const {best,plausible}=findSolutions(data);
+   renderSolution(data,best,plausible);
+ }catch(e){lastPlot=null;$('coords').textContent='—';$('fit-m').textContent='—';$('fit-us').textContent='—';$('real-error').textContent='—';$('warnings').style.display='none';status(e.message,'error');draw();}
+}
+function renderSolution(data,best,plausible){
+ try{
+   if(!Number.isFinite(best.s))throw Error('No numerical solution was found. Check the inputs and search region.');
+   const {rows,bounds}=data;
+   $('coords').textContent=`(${fmt(best.x,4)}, ${fmt(best.y,4)}) m`;
+   $('results-note').textContent=`Best-fitting 2D location within x ∈ [${fmt(bounds.minX)}, ${fmt(bounds.maxX)}], y ∈ [${fmt(bounds.minY)}, ${fmt(bounds.maxY)}]`;
+   $('fit-m').textContent=fmt(best.rms,5);
+   $('fit-us').textContent=fmt(best.rms/data.v*1e6,2);
+   $('real-error').textContent=truth?fmt(Math.hypot(best.x-truth.x,best.y-truth.y),4):'N/A';
+   const ref=rows[0];$('output-tbody').innerHTML=rows.map((p,i)=>{
+     const td=(p.t-ref.t)*data.timeScale*1e6,dd=i?data.dd[i-1]:0;
+     return `<tr><td>M${i+1}</td><td>${fmt(td,2)}</td><td>${fmt(dd,5)}</td><td>${fmt(dist(best.x,best.y,p),4)}</td></tr>`;
+   }).join('');
+   let warnings=[];
+   const nearEdge=Math.abs(best.x-bounds.minX)<.005*(bounds.maxX-bounds.minX)||Math.abs(best.x-bounds.maxX)<.005*(bounds.maxX-bounds.minX)||Math.abs(best.y-bounds.minY)<.005*(bounds.maxY-bounds.minY)||Math.abs(best.y-bounds.maxY)<.005*(bounds.maxY-bounds.minY);
+   const area2=Math.max(...rows.slice(1).map(p=>Math.abs((rows[1].x-ref.x)*(p.y-ref.y)-(rows[1].y-ref.y)*(p.x-ref.x))));
+   const maxSep=Math.max(1,...rows.map(p=>dist(p.x,p.y,ref)));
+   if(area2<1e-5*maxSep*maxSep)warnings.push('The microphones are collinear or nearly collinear, so 2D positioning can be ambiguous or unstable.');
+   rows.slice(1).forEach((p,i)=>{const separation=Math.hypot(p.x-ref.x,p.y-ref.y);if(Math.abs(data.dd[i])>separation+1e-7)warnings.push(`M${i+2} has a distance difference larger than the separation between it and M1; these timestamps are physically inconsistent with the assumed sound speed.`);});
+   if(nearEdge)warnings.push('The best-fitting point is on or near the search boundary. Enlarge the search region to check whether a better location lies outside it.');
+   if(plausible.length>1)warnings.push(`${plausible.length} distinct candidate locations fit the timestamps nearly equally well inside the region. The result is not unique; narrow the search region or use additional prior information about the source path.`);
+   if(best.rms>.05)warnings.push('The time differences do not fit the selected microphone geometry closely (residual RMS above 5 cm). Check units, clock synchronization, and noise.');
+   warnings.push('Three-microphone fit: a small residual alone cannot prove the estimated position is correct. Use the known test path (when available) and inspect ambiguity warnings.');
+   $('warnings').style.display=warnings.length?'block':'none';$('warnings').innerHTML=warnings.map(w=>`<div style="margin:0 0 4px">• ${w}</div>`).join('');
+   lastPlot={data,best,plausible};draw();status('Position estimated. See the plot and calculated differences.');
+ }catch(e){lastPlot=null;status(e.message,'error');draw();}
+}
+function draw(){
+ const canvas=$('plot');const ctx=canvas.getContext('2d');
+ const W=canvas.width,H=canvas.height;
+ ctx.clearRect(0,0,W,H);ctx.fillStyle='#fbfdfe';ctx.fillRect(0,0,W,H);
+ let b,rows;
+ try{const d=getData();b=d.bounds;rows=d.rows;}catch(_){b={minX:-1,maxX:5,minY:-1,maxY:5};rows=[];}
+ const left=67,right=22,top=25,bottom=49,pw=W-left-right,ph=H-top-bottom;
+ const fx=x=>left+(x-b.minX)/(b.maxX-b.minX)*pw;
+ const fy=y=>top+(b.maxY-y)/(b.maxY-b.minY)*ph;
+ ctx.strokeStyle='#e6eef4';ctx.lineWidth=1;
+ for(let i=0;i<=6;i++){
+   const x=left+pw*i/6,y=top+ph*i/6;
+   ctx.beginPath();ctx.moveTo(x,top);ctx.lineTo(x,top+ph);ctx.stroke();
+   ctx.beginPath();ctx.moveTo(left,y);ctx.lineTo(left+pw,y);ctx.stroke();
+ }
+ ctx.strokeStyle='#a5bbcb';ctx.strokeRect(left,top,pw,ph);
+ ctx.fillStyle='#638093';ctx.font='18px system-ui, sans-serif';ctx.textAlign='center';
+ for(let i=0;i<=6;i++){
+  ctx.fillText(fmt(b.minX+i*(b.maxX-b.minX)/6,1),left+pw*i/6,H-18);
+  ctx.textAlign='right';ctx.fillText(fmt(b.maxY-i*(b.maxY-b.minY)/6,1),left-10,top+ph*i/6+6);ctx.textAlign='center';
+ }
+ ctx.fillStyle='#526b80';ctx.font='bold 18px system-ui';ctx.fillText('x (m)',left+pw/2,H-1);ctx.save();ctx.translate(16,top+ph/2);ctx.rotate(-Math.PI/2);ctx.fillText('y (m)',0,0);ctx.restore();
+ // Plot distance-difference contours using marching squares on a dense grid.
+ if(lastPlot && !(trackData && trackData.playing)){
+  const data=lastPlot.data,cols=155,rws=115;
+  const p0=data.rows[0];
+  const field=(x,y,j)=>dist(x,y,data.rows[j+1])-dist(x,y,p0)-data.dd[j];
+  const contour=(j,color)=>{
+   const vals=[];
+   for(let row=0;row<=rws;row++){
+    const y=b.minY+(b.maxY-b.minY)*row/rws,arr=[];
+    for(let col=0;col<=cols;col++){
+     const x=b.minX+(b.maxX-b.minX)*col/cols;
+     arr.push(field(x,y,j));
+    }
+    vals.push(arr);
+   }
+   ctx.strokeStyle=color;ctx.lineWidth=2.8;ctx.globalAlpha=.84;ctx.beginPath();
+   for(let row=0;row<rws;row++)for(let col=0;col<cols;col++){
+    const x0=b.minX+(b.maxX-b.minX)*col/cols,x1=b.minX+(b.maxX-b.minX)*(col+1)/cols;
+    const y0=b.minY+(b.maxY-b.minY)*row/rws,y1=b.minY+(b.maxY-b.minY)*(row+1)/rws;
+    const v0=vals[row][col],v1=vals[row][col+1],v2=vals[row+1][col+1],v3=vals[row+1][col];
+    const pts=[];
+    const edge=(a,c,ax,ay,cx,cy)=>{if((a<=0&&c>0)||(a>0&&c<=0)){const t=a/(a-c);pts.push([fx(ax+t*(cx-ax)),fy(ay+t*(cy-ay))]);}};
+    edge(v0,v1,x0,y0,x1,y0);edge(v1,v2,x1,y0,x1,y1);edge(v2,v3,x1,y1,x0,y1);edge(v3,v0,x0,y1,x0,y0);
+    if(pts.length===2){ctx.moveTo(...pts[0]);ctx.lineTo(...pts[1]);}
+    if(pts.length===4){ctx.moveTo(...pts[0]);ctx.lineTo(...pts[1]);ctx.moveTo(...pts[2]);ctx.lineTo(...pts[3]);}
+   }
+   ctx.stroke();ctx.globalAlpha=1;
+  };
+  for(let i=0;i<data.dd.length;i++)contour(i,['#207bab','#e6a044','#8b65bf','#41a578','#cb6877','#7186c2','#a97b50'][i%7]);
+  for(let i=1;i<lastPlot.plausible.length;i++){
+   const s=lastPlot.plausible[i];ctx.beginPath();ctx.arc(fx(s.x),fy(s.y),10,0,2*Math.PI);ctx.fillStyle='white';ctx.strokeStyle='#7f46ac';ctx.lineWidth=3;ctx.fill();ctx.stroke();
+  }
+ }
+ // Tracking overlay: full true path (demo only) and estimates up to current event.
+ if(trackData && trackData.frames.length){
+   ctx.save();ctx.beginPath();ctx.rect(left,top,pw,ph);ctx.clip();
+   if(trackData.truths){
+     ctx.beginPath();trackData.truths.forEach((p,i)=>{if(i===0)ctx.moveTo(fx(p.x),fy(p.y));else ctx.lineTo(fx(p.x),fy(p.y));});
+     ctx.setLineDash([9,7]);ctx.strokeStyle='#25a58b';ctx.lineWidth=2.2;ctx.globalAlpha=.6;ctx.stroke();ctx.setLineDash([]);ctx.globalAlpha=1;
+   }
+   ctx.beginPath();let started=false;
+   for(let i=0;i<=trackData.cursor;i++){
+     const p=trackData.solutions[i];if(!p)continue;
+     if(!started){ctx.moveTo(fx(p.x),fy(p.y));started=true;}else ctx.lineTo(fx(p.x),fy(p.y));
+   }
+   ctx.strokeStyle='#8050b1';ctx.lineWidth=4;ctx.stroke();
+   for(let i=0;i<=trackData.cursor;i++){
+     const p=trackData.solutions[i];if(!p)continue;
+     ctx.beginPath();ctx.arc(fx(p.x),fy(p.y),3.4,0,2*Math.PI);ctx.fillStyle='#8050b1';ctx.fill();
+   }
+   ctx.restore();
+ }
+ // Draw sensors after contours, so the markers remain visible.
+ rows.forEach((p,i)=>{
+  const x=fx(p.x),y=fy(p.y);if(x<left-15||x>W-right+15||y<top-15||y>H-bottom+15)return;
+  ctx.fillStyle='#1c78ae';ctx.strokeStyle='#fff';ctx.lineWidth=3;ctx.beginPath();ctx.arc(x,y,8,0,2*Math.PI);ctx.fill();ctx.stroke();
+  ctx.textAlign='left';ctx.font='bold 19px system-ui';ctx.fillStyle='#1b5f88';ctx.fillText('M'+(i+1),x+12,y-9);
+ });
+ if(truth){let x=fx(truth.x),y=fy(truth.y);ctx.strokeStyle='#22a58b';ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(x-10,y-10);ctx.lineTo(x+10,y+10);ctx.moveTo(x+10,y-10);ctx.lineTo(x-10,y+10);ctx.stroke();ctx.font='bold 18px system-ui';ctx.textAlign='left';ctx.fillStyle='#137c69';ctx.fillText('True',x+13,y+23);}
+ if(lastPlot){const p=lastPlot.best,x=fx(p.x),y=fy(p.y);
+  ctx.fillStyle='#103c5b';ctx.strokeStyle='#fff';ctx.lineWidth=4;ctx.beginPath();ctx.arc(x,y,10,0,2*Math.PI);ctx.fill();ctx.stroke();
+  ctx.font='bold 20px system-ui';ctx.textAlign='left';ctx.fillStyle='#103c5b';ctx.fillText('Estimate',x+13,y-13);
+ }
+}
+function gaussian(){let u=0,v=0;while(u===0)u=Math.random();while(v===0)v=Math.random();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+function generate(){
+ try{
+  const data=getData(),x=num('true-x'),y=num('true-y'),emitMs=num('emit-time'),noiseUs=num('noise');
+  if(['true-x','true-y','emit-time','noise'].some(id=>$(id).value==='')||![x,y,emitMs,noiseUs].every(Number.isFinite)||noiseUs<0)throw Error('Enter a valid test-source position, emission time, and nonnegative noise SD.');
+  const scale=$('time-unit').value==='ms'?1000:1e6;
+  [...body.children].forEach((tr,i)=>{
+   const d=dist(x,y,data.rows[i]),t=emitMs*scale/1000+d/data.v*scale+gaussian()*noiseUs*scale/1e6;
+   tr.querySelector('.st').value=t.toFixed(data.timeScale===.001?6:3);
+  });
+  truth={x,y};solveAndRender();status('Simulated timestamps generated. The green × marks the known test source.');
+ }catch(e){status(e.message,'error');}
+}
+
+// ---------- Trajectory tracker: synchronized multi-event TDOA ----------
+const trackStatus=(message,error=false)=>{const el=$('track-status');el.textContent=message;el.style.color=error?'#ac3e2b':'#365e79';};
+function stopTrack(){if(trackTimer!==null){clearInterval(trackTimer);trackTimer=null;}if(trackData)trackData.playing=false;}
+function clearTrack(update=true){
+  stopTrack();trackData=null;truth=null;
+  $('frame-slider').value='0';$('frame-slider').max='0';$('frame-slider').disabled=true;
+  $('frame-label').textContent='—';$('track-count').textContent='0 / 0';
+  for(const id of ['play-track','process-track','export-track'])$(id).disabled=true;
+  $('trajectory-summary').textContent='No motion sequence loaded yet.';
+  if(update){trackStatus('Tracking cleared.');draw();drawHistory();}
+}
+function invalidateTrack(){
+  if(!trackData)return;
+  stopTrack();trackData.solutions=Array(trackData.frames.length).fill(null);
+  $('export-track').disabled=true;updateTrackSummary();
+  trackStatus('Geometry or speed changed. Recalculate the track to use the updated measurements.');
+  drawHistory();
+}
+function parseSequence(text,expected){
+  const rows=text.split(/\r?\n/).map(x=>x.trim()).filter(x=>x&&!x.startsWith('#'));
+  if(!rows.length)throw Error('Paste or import a nonempty timestamp sequence.');
+  let frames=[];
+  rows.forEach((line,i)=>{
+    const cols=line.split(/[,;\t]/).map(x=>x.trim().replace(/^"|"$/g,''));
+    // Optional header row: 'frame,M1,M2,...' or 'M1,M2,...'
+    if(i===0 && cols.some(c=>/^m\d+$/i.test(c))){return;}
+    if(cols.length!==expected && cols.length!==expected+1)throw Error(`CSV row ${i+1} needs ${expected} microphone timestamps, optionally preceded by a frame label; found ${cols.length} columns.`);
+    const withLabel=cols.length===expected+1;
+    const times=cols.slice(withLabel?1:0);
+    if(times.some(v=>v===''||!Number.isFinite(Number(v))))throw Error(`CSV row ${i+1} contains a missing or non-numeric timestamp.`);
+    frames.push({label:withLabel?cols[0]:String(frames.length),times:times.map(Number)});
+  });
+  if(!frames.length)throw Error('No timestamp rows found after the header.');
+  if(frames.length>1500)throw Error('For browser performance, load up to 1500 events at once.');
+  return frames;
+}
+function loadFrames(frames,truths=null){
+  getData(); // Validate geometry and other solver settings.
+  clearTrack(false);
+  trackData={frames,truths,cursor:0,solutions:Array(frames.length).fill(null),playing:false};
+  $('frame-slider').disabled=false;$('frame-slider').max=String(frames.length-1);
+  $('play-track').disabled=false;$('process-track').disabled=false;
+  showTrackFrame(0);
+  trackStatus(`Loaded ${frames.length} sound events from ${frames[0].times.length} microphones. Press Play, or calculate the entire track.`);
+}
+function captureTrackFrame(i){
+  const frame=trackData.frames[i];
+  if(frame.times.length!==body.children.length)throw Error('Number of microphones no longer matches timestamp sequence.');
+  [...body.children].forEach((tr,j)=>{tr.querySelector('.st').value=String(frame.times[j]);});
+  truth=trackData.truths?trackData.truths[i]:null;
+}
+function solveTrackFrame(i){
+  captureTrackFrame(i);
+  const data=getData();
+  const sols=findSolutions(data);
+  // Keep prior estimates continuous if alternatives have comparably good residuals.
+  // Residual fit is always the primary criterion; continuity only breaks close ties.
+  const prev=i>0?trackData.solutions[i-1]:null;
+  let selected=sols.best;
+  if(prev&&sols.plausible.length>1){
+    const candidates=sols.plausible.filter(p=>p.rms<=sols.best.rms+Math.max(.0005,.03*sols.best.rms));
+    if(candidates.length>1)selected=candidates.reduce((best,p)=>Math.hypot(p.x-prev.x,p.y-prev.y)<Math.hypot(best.x-prev.x,best.y-prev.y)?p:best,candidates[0]);
+  }
+  const result={...selected,candidates:sols.plausible};
+  trackData.solutions[i]=result;
+  return {data,best:result,plausible:sols.plausible};
+}
+function showTrackFrame(index){
+  if(!trackData)return;
+  stopTrack();
+  return displayTrackFrame(index);
+}
+function displayTrackFrame(index){
+  if(!trackData)return;
+  const i=clamp(Math.round(index),0,trackData.frames.length-1);
+  try{
+    trackData.cursor=i;
+    captureTrackFrame(i);
+    let d;
+    if(!trackData.solutions[i])d=solveTrackFrame(i);
+    else d={data:getData(),best:trackData.solutions[i],plausible:trackData.solutions[i].candidates||[trackData.solutions[i]]};
+    $('frame-slider').value=String(i);
+    $('frame-label').textContent=`${i+1} / ${trackData.frames.length} (label: ${trackData.frames[i].label})`;
+    renderSolution(d.data,d.best,d.plausible);
+    updateTrackSummary();drawHistory();
+  }catch(e){stopTrack();trackStatus(e.message,true);}
+}
+function updateTrackSummary(){
+  if(!trackData)return;
+  const n=trackData.solutions.filter(Boolean).length;
+  $('track-count').textContent=`${n} / ${trackData.frames.length}`;
+  $('export-track').disabled=n===0;
+  if(n){
+    const available=trackData.solutions.filter(Boolean);
+    const xMin=Math.min(...available.map(p=>p.x)),xMax=Math.max(...available.map(p=>p.x));
+    const yMin=Math.min(...available.map(p=>p.y)),yMax=Math.max(...available.map(p=>p.y));
+    const e=trackData.truths?Math.sqrt(trackData.solutions.reduce((a,p,i)=>a+(p?Math.hypot(p.x-trackData.truths[i].x,p.y-trackData.truths[i].y)**2:0),0)/n):null;
+    $('trajectory-summary').textContent=`${n} of ${trackData.frames.length} events localized. x range: ${fmt(xMin,3)}–${fmt(xMax,3)} m; y range: ${fmt(yMin,3)}–${fmt(yMax,3)} m.`+(e===null?'':' Demo trajectory RMSE: '+fmt(e,4)+' m.');
+  }else $('trajectory-summary').textContent='No events analyzed yet.';
+}
+function analyzeAll(){
+  if(!trackData)return;
+  stopTrack();
+  try{
+    // Order matters: preceding event is used to disambiguate nearly equal fits.
+    for(let i=0;i<trackData.frames.length;i++)solveTrackFrame(i);
+    displayTrackFrame(trackData.frames.length-1);
+    trackStatus(`Analyzed all ${trackData.frames.length} events using three microphones. Purple: estimated path.`+(trackData.truths?' Dashed green: known demo path.':''));
+  }catch(e){stopTrack();trackStatus(e.message,true);}
+}
+function playback(){
+  if(!trackData)return;
+  if(trackTimer!==null){stopTrack();trackStatus('Playback paused.');return;}
+  const fps=Number($('fps').value);
+  if(!Number.isFinite(fps)||fps<.5||fps>30){trackStatus('Set playback speed between 0.5 and 30 frames/sec.',true);return;}
+  if(trackData.cursor>=trackData.frames.length-1){trackData.cursor=-1;trackData.solutions=Array(trackData.frames.length).fill(null);}
+  trackData.playing=true;
+  trackTimer=setInterval(()=>{
+    if(!trackData)return;
+    const next=trackData.cursor+1;
+    if(next>=trackData.frames.length){stopTrack();trackStatus('Playback complete. Use the slider to inspect any event.');return;}
+    displayTrackFrame(next);
+    // displayTrackFrame does not stop an active playback.
+    if(next===trackData.frames.length-1){stopTrack();trackStatus('Playback complete.');}
+  },1000/fps);
+  trackStatus('Playing timestamp events and estimating positions as the source moves…');
+}
+function drawHistory(){
+  const canvas=$('history-plot'),ctx=canvas.getContext('2d'),W=canvas.width,H=canvas.height;
+  ctx.clearRect(0,0,W,H);ctx.fillStyle='#fbfdfe';ctx.fillRect(0,0,W,H);
+  const L=75,R=24,T=30,B=55,pw=W-L-R,ph=H-T-B;
+  let lo=-1,hi=5;
+  if(trackData){
+    const finite=trackData.solutions.filter(Boolean).flatMap(p=>[p.x,p.y]);
+    if(finite.length){lo=Math.min(...finite);hi=Math.max(...finite);const pad=Math.max((hi-lo)*.15,.2);lo-=pad;hi+=pad;}
+  }
+  const fx=i=>L+(trackData&&trackData.frames.length>1?i/(trackData.frames.length-1):.5)*pw;
+  const fy=v=>T+(hi-v)/(hi-lo)*ph;
+  ctx.strokeStyle='#e6eef4';ctx.lineWidth=1;
+  for(let i=0;i<=5;i++){
+    const y=T+i*ph/5,x=L+i*pw/5;
+    ctx.beginPath();ctx.moveTo(L,y);ctx.lineTo(W-R,y);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(x,T);ctx.lineTo(x,H-B);ctx.stroke();
+  }
+  ctx.strokeStyle='#a6bac7';ctx.strokeRect(L,T,pw,ph);
+  ctx.fillStyle='#658297';ctx.font='16px system-ui';ctx.textAlign='right';
+  for(let i=0;i<=5;i++)ctx.fillText(fmt(hi-i*(hi-lo)/5,2),L-10,T+i*ph/5+6);
+  ctx.textAlign='center';
+  for(let i=0;i<=5;i++){const n=trackData?Math.round(i*(trackData.frames.length-1)/5)+1:i;ctx.fillText(String(n),L+i*pw/5,H-21);}
+  ctx.font='bold 17px system-ui';ctx.fillText('Event number',L+pw/2,H-1);
+  ctx.save();ctx.translate(17,T+ph/2);ctx.rotate(-Math.PI/2);ctx.fillText('Position (m)',0,0);ctx.restore();
+  if(!trackData)return;
+  for(const [axis,color] of [['x','#286fc1'],['y','#bc5a96']]){
+    ctx.beginPath();let started=false;
+    for(let i=0;i<=trackData.cursor;i++){
+      const p=trackData.solutions[i];if(!p){started=false;continue;}
+      if(!started){ctx.moveTo(fx(i),fy(p[axis]));started=true;}else ctx.lineTo(fx(i),fy(p[axis]));
+    }
+    ctx.strokeStyle=color;ctx.lineWidth=3.2;ctx.stroke();
+    const p=trackData.solutions[trackData.cursor];if(p){ctx.beginPath();ctx.arc(fx(trackData.cursor),fy(p[axis]),7,0,2*Math.PI);ctx.fillStyle=color;ctx.fill();}
+  }
+  ctx.beginPath();ctx.moveTo(fx(trackData.cursor),T);ctx.lineTo(fx(trackData.cursor),H-B);
+  ctx.setLineDash([5,5]);ctx.strokeStyle='#334c62';ctx.lineWidth=1.5;ctx.stroke();ctx.setLineDash([]);
+}
+function makeMovingDemo(){
+  try{
+    // Use the three microphones already entered by the user.
+    const d=getData(),frameCount=55,frames=[],truths=[],scale=$('time-unit').value==='ms'?1000:1e6;
+    const noiseUs=num('noise');if(!Number.isFinite(noiseUs)||noiseUs<0)throw Error('Noise SD must be nonnegative.');
+    for(let i=0;i<frameCount;i++){
+      const u=i/(frameCount-1),x=.75+1.7*u,y=.95+.75*Math.sin(u*2*Math.PI)+.05*u;
+      const emission=100+i*220;
+      truths.push({x,y});
+      const times=d.rows.map(p=>emission*scale/1000+dist(x,y,p)/d.v*scale+gaussian()*noiseUs*scale/1e6);
+      frames.push({label:String(i),times});
+    }
+    $('sequence').value='frame,'+d.rows.map((_,i)=>'M'+(i+1)).join(',')+'\n'+frames.map(f=>f.label+','+f.times.map(v=>v.toFixed($('time-unit').value==='ms'?6:3)).join(',')).join('\n');
+    loadFrames(frames,truths);
+    trackStatus(`Generated ${frameCount} moving-source events using exactly three microphones. Click Play to see tracking in action. Noise SD: ${fmt(noiseUs)} µs.`);
+  }catch(e){trackStatus(e.message,true);}
+}
+function appendCurrent(){
+  try{
+    const data=getData(),times=data.rows.map(p=>p.t);
+    if(trackData&&trackData.frames[0].times.length!==times.length)throw Error('Microphone count differs from the loaded sequence; clear the track to start a new one.');
+    if(!trackData){loadFrames([{label:'0',times}],null);trackStatus('Added event 1. Update the microphone timestamps, then append the next event.');return;}
+    stopTrack();trackData.truths=null;
+    const i=trackData.frames.length;
+    trackData.frames.push({label:String(i),times});trackData.solutions.push(null);
+    $('frame-slider').max=String(i);displayTrackFrame(i);
+    trackStatus(`Appended event ${i+1}. Continue entering arrival timestamps to build the trajectory.`);
+  }catch(e){trackStatus(e.message,true);}
+}
+function exportCsv(){
+  if(!trackData)return;
+  const header='event,label,x_m,y_m,residual_rms_m'+(trackData.truths?',true_x_m,true_y_m,error_m':'');
+  const lines=trackData.frames.map((f,i)=>{
+    const p=trackData.solutions[i],t=trackData.truths&&trackData.truths[i];
+    return [i+1,`"${String(f.label).replaceAll('"','""')}"`,p?fmt(p.x,9):'',p?fmt(p.y,9):'',p?fmt(p.rms,9):'',...(trackData.truths?[fmt(t.x,9),fmt(t.y,9),p?fmt(Math.hypot(p.x-t.x,p.y-t.y),9):'']:[])].join(',');
+  });
+  const blob=new Blob([[header,...lines].join('\n')],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='tdoa_estimated_trajectory.csv';
+  document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),1200);
+}
+$('load-sequence').addEventListener('click',()=>{
+  try{loadFrames(parseSequence($('sequence').value,body.children.length));}
+  catch(e){trackStatus(e.message,true);}
+});
+$('csv-upload').addEventListener('change',async e=>{
+  const file=e.target.files&&e.target.files[0];if(!file)return;
+  try{$('sequence').value=await file.text();loadFrames(parseSequence($('sequence').value,body.children.length));trackStatus(`Imported ${trackData.frames.length} events from ${file.name}.`);}
+  catch(err){trackStatus(err.message,true);}
+});
+$('make-motion-demo').addEventListener('click',makeMovingDemo);
+$('play-track').addEventListener('click',playback);
+$('process-track').addEventListener('click',analyzeAll);
+$('append-track').addEventListener('click',appendCurrent);
+$('clear-track').addEventListener('click',()=>clearTrack(true));
+$('frame-slider').addEventListener('input',e=>showTrackFrame(Number(e.target.value)));
+$('export-track').addEventListener('click',exportCsv);
+
+$('estimate').addEventListener('click',solveAndRender);
+$('example').addEventListener('click',makeExample);
+$('generate').addEventListener('click',generate);
+$('time-unit').addEventListener('change',()=>{
+ const val=$('time-unit').value;const mult=val==='us'?1000:.001;
+ [...body.querySelectorAll('.st')].forEach(el=>{if(el.value!=='')el.value=String(Number(el.value)*mult);});
+ if(trackData){trackData.frames.forEach(f=>f.times=f.times.map(t=>t*mult));invalidateTrack();}
+ curUnit=val;markStale();
+});
+['speed','min-x','max-x','min-y','max-y'].forEach(id=>$(id).addEventListener('input',()=>{invalidateTrack();markStale(true);}));
+makeExample();drawHistory();
+</script>
+</body>
+</html>
